@@ -16,7 +16,20 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
 - 0424
     - 我在**console_chatbot.py**裡面有設定```if "Stopping further processing" in response: pass```,結果是出現正確的回應和打開calculator
     - 但那只是更侷限,一般來說,我還是用```Open the calculator```就可以成功打開計算機,但也帶來問題**是不是問題要非常的詳細才能讓AI inference出正確的答案?**
+        - 也不是,但在ai agent的過程中,ai在打開計算機後他還是會繼續依照環境(observation)來找tool並action,但這可能就不是我決定了,是AI會來繼續判斷有沒有持續做下去的理由
     - 多加了天氣的問題(Get Weather)來看是否找到答案
         - 發現有時候雖然已經找到適合的observation和action和thogut,可是AI會繼續推理(inference)不停止,導致最後類似segmentation fault的error(Thought:Bot: Sorry, I couldn't process your request. Error: Exception from src\inference\src\cpp\infer_request.cpp:245:
 Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:33)
+
+- 0425
+    - 必須對**return_intermediate_steps**有詳細的了解
+        - 代理會返回執行過程中的中間步驟（intermediate steps）。
+這些中間步驟包括代理的推理過程、選擇的工具、工具的輸入和輸出等。
+主要用於調試和分析代理的內部邏輯。
+
+- 0426
+    - 今天又嘗試想要send email, 收件者:xxx, Subject: AI Agent, Body: Try to send an email by ai agent => 經過邏輯推理後, Subject: AI Agent Email Sending Request, Body: The user is requesting assistance with sending an email using an AI agent
+    - 但一樣的問題,在Finial Answer以後LLM還是覺得應該繼續在新的respond繼續邏輯推理,直到Failed to send email. Error: Exception from src\inference\src\cpp\infer_request.cpp:245:
+Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:33
+    - 原來寫code上出現有點問題,在send email的部分,一開始先在特定的問題關鍵字執行後Bot先回答並要求"receipient","subject","body",問了大略的問題後ai agent就真的開始進行邏輯推理,完成後就可以成功寄出去,且內容鰻完整的。
 
