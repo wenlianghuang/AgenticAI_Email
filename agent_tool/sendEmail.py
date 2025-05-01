@@ -39,7 +39,7 @@ def send_email(recipient: str, subject: str, body: str):
             server.send_message(msg)  # Send the email
 
         #print("Email sent successfully!")
-        return "Email sent successfully! STOP"
+        return "✅ Email sent successfully! STOP"
     except Exception as e:
         #print(f"Failed to send email: {e}")
         return f"Failed to send email: {e}. STOP!"

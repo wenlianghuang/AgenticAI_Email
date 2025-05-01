@@ -53,6 +53,6 @@ def get_weather_by_city(city_name):
         location_key, city_name = get_location_key(city_name)
         weather = get_current_weather(location_key, language)[0]
 
-        return f"The current weather in {city_name} is {weather['WeatherText']} with a temperature of {weather['Temperature']['Metric']['Value']}°C, humidity {weather['RelativeHumidity']}%, and wind speed {weather['Wind']['Speed']['Metric']['Value']} km/h."
+        return f"✅ The current weather in {city_name} is {weather['WeatherText']} with a temperature of {weather['Temperature']['Metric']['Value']}°C, humidity {weather['RelativeHumidity']}%, and wind speed {weather['Wind']['Speed']['Metric']['Value']} km/h."
     except Exception as e:
         return f"Unable to retrieve weather information: {str(e)}"

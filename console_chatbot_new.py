@@ -5,7 +5,7 @@ def main():
     
     while True:
         user_input = input("You: ")
-        if user_input.lower() == 'exit':
+        if user_input.lower() == 'exit' or user_input.lower() == 'cls':
             print("Goodbye!")
             break
         

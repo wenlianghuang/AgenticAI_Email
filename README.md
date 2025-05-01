@@ -31,5 +31,14 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - 今天又嘗試想要send email, 收件者:xxx, Subject: AI Agent, Body: Try to send an email by ai agent => 經過邏輯推理後, Subject: AI Agent Email Sending Request, Body: The user is requesting assistance with sending an email using an AI agent
     - 但一樣的問題,在Finial Answer以後LLM還是覺得應該繼續在新的respond繼續邏輯推理,直到Failed to send email. Error: Exception from src\inference\src\cpp\infer_request.cpp:245:
 Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:33
-    - 原來寫code上出現有點問題,在send email的部分,一開始先在特定的問題關鍵字執行後Bot先回答並要求"receipient","subject","body",問了大略的問題後ai agent就真的開始進行邏輯推理,完成後就可以成功寄出去,且內容鰻完整的。
+    - 原來寫code上出現有點問題,在send email的部分,一開始先在特定的問題關鍵字執行後Bot先回答並要求"receipient","subject","body",問了大略的問題後ai agent就真的開始進行邏輯推理,完成後就可以成功寄出去,且內容頗為完整的。
+- 0429
+    - 用GPU當Final Answer以後並沒有馬上而是直接重新尋找observation,而且重點是,**下一輪的thought竟然就卡住當機**
+    - 目前關鍵看來是**return_intermediate_steps**,來仔細研究測試
+        - 但其實也不是關鍵,他只是讓你來測試而已,你覺得用open_calculator可以總是成功執行是因為用了**return-direct=True**
+- 0430
+    - 用**langgraph**替代**langchain**
+        - 目前可以先參考```Agentic_AI_Tool_test5.py```
+    - 但現在的問題出在,我在輸入問題的時候,有時候需要找到關鍵字才能再進行後續的resoning,action...,但就像查詢天氣的時候,很容易找不到關鍵字(ex:城市)輸入到API,這是一個相對來說問題所在。
+    - 
 
