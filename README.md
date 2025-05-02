@@ -40,5 +40,10 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - 用**langgraph**替代**langchain**
         - 目前可以先參考```Agentic_AI_Tool_test5.py```
     - 但現在的問題出在,我在輸入問題的時候,有時候需要找到關鍵字才能再進行後續的resoning,action...,但就像查詢天氣的時候,很容易找不到關鍵字(ex:城市)輸入到API,這是一個相對來說問題所在。
-    - 
+- 0501
+    - 把```workflow_multi.py```跟```console_chatbot_langgraph_v2```分開避免搞混
+- 0502    
+    - 多設定給一般的cuda的選擇,在```workflow_multi_cuda.py```這個部分,可以回家測試用有cuda的狀況下是否可執行
+    - 發現雖然我是從**tool_call**進到切入口,但不管怎麼樣他好像一定會執行到**agent**，所以才會出現
+        - 建議還是用agent為主,除非真的是找不到,才會往**tool_call**走,當然
 

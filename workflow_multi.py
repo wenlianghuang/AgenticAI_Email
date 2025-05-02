@@ -98,6 +98,7 @@ class AgentState(TypedDict):
 
 # Define the core logic node
 def call_agent(data: AgentState):
+    #print("run in call_agent")
     prompt = (
         "You are an AI assistant with reasoning capabilities. "
         "When the user asks for an action, respond with the exact tool name to execute the action. "
@@ -109,15 +110,38 @@ def call_agent(data: AgentState):
         + "".join([m.content for m in data["messages"] if hasattr(m, 'content')])
     )
     response = llm._call(prompt).strip()
-
+    last_message = data["messages"][-1].content.lower()
     # Match the response to a tool
     for tool in tools:
         if tool.name.lower() in response.lower():
-            tool_result = tool.func("")
+            if tool.name == "Search Wikipedia":
+                # Prompt the user for a topic to search
+                print("🤖 Please provide a topic to search on Wikipedia.")
+                topic = input("Topic: ")
+                tool_result = tool.func(topic)
+            elif tool.name == "Get Weather":
+                print("🤖 Please provide the city name for weather information. again")
+                city = input("City: ")
+                tool_result = tool.func(city)
+            elif tool.name == "SendEmail":
+                print("🤖 Please provide the recipient, subject and the concept of day.")
+                recipient = input("Recipient: ")
+                subject = input("Subject: ")
+                # Use LLM to generate a detailed email body
+                prompt = (
+                    f"You are an AI assistant. The user wants to send an email with the subject '{subject}'. "
+                    f"Generate a detailed and professional email body based on the user's input: '{last_message}'."
+                )
+                body = llm._call(prompt).strip()
+                tool_result = tool.func(recipient, subject, body)    
+            else:
+                tool_result = tool.func("")
+            #print(f"Tool result: {tool_result}")
             # Add a marker to indicate the tool has been executed
             return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]")]} # 多給一個標記，讓後面不會重複執行
 
-    return {"messages": data["messages"] + [SystemMessage(content="No matching tool found.")]}
+    #return {"messages": data["messages"] + [SystemMessage(content="No matching tool found.")]}
+    return {"messages": data["messages"] + [SystemMessage(content="[NO_TOOL_MATCHED]")]} # 這是在沒有找到對應的tool,才會繼續往"call_tools_with_feedback"走
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -135,15 +159,18 @@ def call_tools_with_feedback(data: AgentState):
     cleaned_message = last_message.split("\n")[0]
 
     for tool in tools:
+        #print(f"Tool name: {tool.name}, Tool description: {tool.description}")
         # Match against both tool name and description
         for keyword in [tool.name.lower(), tool.description.lower()]:
             score = similar(cleaned_message, keyword)
+            #print(f"Best match: {best_match.name if best_match else 'None'}, Score: {best_score}, Current score: {score}")
             if score > best_score:
                 best_score = score
                 best_match = tool
-    print(f"Best match: {best_match.name if best_match else 'None'} with score: {best_score}")
+                #print(f"Best match: {best_match.name if best_match else 'None'} with score: {best_score}")
+    #print(f"Best match: {best_match.name if best_match else 'None'} with score: {best_score}")
     # Only execute the tool if the match score is above a stricter threshold
-    if best_match and best_score > 0.5:
+    if best_match and best_score > 0.3:
         if best_match.name == "SendEmail":
              # Prompt the user for additional details
             print("🤖 Please provide the email details.")
@@ -158,6 +185,11 @@ def call_tools_with_feedback(data: AgentState):
             #body = input("Body: ")
             tool_result = best_match.func(recipient, subject, body)
             #tool_result = best_match.func({"recipient": recipient, "subject": subject, "body": body})
+        elif best_match.name == "Search Wikipedia":
+            # Prompt the user for a topic to search
+            print("🤖 Please provide a topic to search on Wikipedia.")
+            topic = input("Topic: ")
+            tool_result = best_match.func(topic)
         else:
             tool_result = best_match.func("")
         if "✅" in tool_result:
@@ -176,9 +208,10 @@ def build_workflow():
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", call_agent)
     workflow.add_node("tool_call", call_tools_with_feedback)
-    #workflow.set_entry_point("agent")
-    workflow.set_entry_point("tool_call")
+    workflow.set_entry_point("agent")
+    #workflow.set_entry_point("tool_call")
     workflow.add_edge("agent", "tool_call")
+    #workflow.add_edge("tool_call", "agent") # Add an edge from tool_call to agent for feedback loop
     workflow.add_conditional_edges(
         "tool_call", 
         should_end,
