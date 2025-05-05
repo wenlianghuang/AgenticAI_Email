@@ -14,7 +14,7 @@ import os
 from agent_tool.weather import get_weather_by_city
 from agent_tool.sendEmail import send_email, SendEmailInput
 from agent_tool.searchWikipedia import search_wikipedia
-
+from agent_tool.stockReport import get_quarterly_revenue_and_plot
 load_dotenv()
 
 model_path = 'Phi-35_mini_instruct_refined'
@@ -90,7 +90,12 @@ wikipedia_tool = Tool(
     description="Returns a Wikipedia summary given a topic."
 )
 
-tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool]
+stock_report_tool = Tool(
+    name="Get Stock Report",
+    func=lambda symbol: get_quarterly_revenue_and_plot(symbol),
+    description="Fetches and plots the quarterly revenue data for a given stock symbol."
+)
+tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool,stock_report_tool]
 
 # Define agent input/output schema
 class AgentState(TypedDict):
@@ -133,7 +138,18 @@ def call_agent(data: AgentState):
                     f"Generate a detailed and professional email body based on the user's input: '{last_message}'."
                 )
                 body = llm._call(prompt).strip()
-                tool_result = tool.func(recipient, subject, body)    
+                tool_result = tool.func(recipient, subject, body)
+            elif tool.name == "Get Stock Report":
+                print("🤖 Please provide the stock symbol for the report.")
+                symbol = input("Stock Symbol: ")
+                prompt = (
+                    f"You are an AI assistant. The user wants to get a stock report for the company '{symbol}'. "
+                    f"Find the stock ticker symbol for this company and provide it to the user."
+                    f"Only return the stock ticker symbol, nothing else."
+                )
+                stock_ticker = llm._call(prompt).strip()
+                tool_result = tool.func(stock_ticker)
+                #tool_result = tool.func(symbol)    
             else:
                 tool_result = tool.func("")
             #print(f"Tool result: {tool_result}")

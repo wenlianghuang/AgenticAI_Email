@@ -16,7 +16,7 @@ import os
 from agent_tool.weather import get_weather_by_city
 from agent_tool.sendEmail import send_email, SendEmailInput
 from agent_tool.searchWikipedia import search_wikipedia
-
+from agent_tool.stockReport import get_quarterly_revenue_and_plot
 load_dotenv()
 
 model_name = "microsoft/Phi-4"
@@ -92,7 +92,14 @@ wikipedia_tool = Tool(
     description="Returns a Wikipedia summary given a topic."
 )
 
-tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool]
+stock_report_tool = Tool(
+    name="Get Stock Report",
+    func=lambda symbol: get_quarterly_revenue_and_plot(symbol),
+    description="Fetches and plots the quarterly revenue data for a given stock symbol."
+)
+
+
+tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool, stock_report_tool]
 
 # Define agent input/output schema
 class AgentState(TypedDict):

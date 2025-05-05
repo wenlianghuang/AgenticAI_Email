@@ -42,8 +42,8 @@ def plot_revenue(quarters, revenues, symbol):
     plt.xticks(rotation=45)
     plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'${x:,.0f}'))  # Format y-axis as currency
     plt.tight_layout()
-    plt.show()  # Display the plot first
-    plt.savefig(f"{symbol}_quarterly_revenue.png")  # Save the plot after closing
+    plt.savefig(f"{symbol}_quarterly_revenue.png")  # Save the plot before displaying
+    plt.show()  # Display the plot
 def get_quarterly_revenue_and_plot(symbol):
     try:
         quarters, revenues = get_quarterly_revenue(symbol)

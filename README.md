@@ -45,5 +45,11 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
 - 0502    
     - 多設定給一般的cuda的選擇,在```workflow_multi_cuda.py```這個部分,可以回家測試用有cuda的狀況下是否可執行
     - 發現雖然我是從**tool_call**進到切入口,但不管怎麼樣他好像一定會執行到**agent**，所以才會出現
-        - 建議還是用agent為主,除非真的是找不到,才會往**tool_call**走,當然
+        - 建議還是用agent為主,除非真的是找不到,才會往**tool_call**走
+- 0503
+    - 考慮怎麼用Agentic AI 做出一個word
+        - 結果先是從股票和財報下手
+
+- 0505
+    - 
 
