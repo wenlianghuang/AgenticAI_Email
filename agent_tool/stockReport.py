@@ -1,13 +1,13 @@
 import requests
-
 import matplotlib.pyplot as plt
-import os 
+import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Alpha Vantage API Key
 API_KEY = os.getenv('Alpha_Vantage')
-#API_KEY='V0RVYSEBFEE4A0TA'
+
 # Function to fetch quarterly revenue data
 def get_quarterly_revenue(symbol):
     url = f'https://www.alphavantage.co/query'
@@ -18,7 +18,6 @@ def get_quarterly_revenue(symbol):
     }
     response = requests.get(url, params=params)
     data = response.json()
-    #print(data)  # Debugging line to check the response
     if 'quarterlyReports' not in data:
         raise ValueError("Unable to fetch data. Check the symbol or API key.")
     
@@ -26,40 +25,68 @@ def get_quarterly_revenue(symbol):
     revenues = []
     quarters = []
 
-    for report in quarterly_reports[:4]:  # Get the latest 4 quarters
+    for report in quarterly_reports:  # Get all available quarters
         quarters.append(report['fiscalDateEnding'])
         revenues.append(float(report['totalRevenue']))
 
-    return quarters[::-1], revenues[::-1]  # Reverse for chronological order
-    
+    # Reverse for chronological order
+    quarters = quarters[::-1]
+    revenues = revenues[::-1]
+
+    # Select the last 4 quarters
+    last_4_quarters = quarters[-4:]
+    last_4_revenues = revenues[-4:]
+
+    # Calculate YOY changes for the last 4 quarters
+    yoy_changes = []
+    for i in range(-4, 0):  # Compare each of the last 4 quarters with the same quarter from the previous year
+        if i - 4 >= -len(revenues):  # Ensure there is data for YOY comparison
+            yoy_change = ((revenues[i] - revenues[i - 4]) / revenues[i - 4]) * 100
+            yoy_changes.append(yoy_change)
+        else:
+            yoy_changes.append(None)  # Not enough data for YOY comparison
+
+    return last_4_quarters, last_4_revenues, yoy_changes
+
 # Plotting the revenue data
-def plot_revenue(quarters, revenues, symbol):
-    plt.figure(figsize=(10, 6))
-    plt.bar(quarters, revenues, color='skyblue')
-    plt.title(f'{symbol} Quarterly Revenue (Last 4 Quarters)', fontsize=14)
-    plt.xlabel('Quarter', fontsize=12)
-    plt.ylabel('Revenue (in USD)', fontsize=12)
-    plt.xticks(rotation=45)
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'${x:,.0f}'))  # Format y-axis as currency
+def plot_revenue(quarters, revenues, yoy_changes, symbol):
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Plot revenue as a bar chart
+    ax1.bar(quarters, revenues, color='skyblue', label='Quarterly Revenue')
+    ax1.set_title(f'{symbol} Quarterly Revenue and YOY Comparison (Last 4 Quarters)', fontsize=14)
+    ax1.set_xlabel('Quarter', fontsize=12)
+    ax1.set_ylabel('Revenue (in USD)', fontsize=12)
+    ax1.set_xticks(range(len(quarters)))
+    ax1.set_xticklabels(quarters, rotation=45)
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'${x:,.0f}'))
+
+    # Create a secondary y-axis for YOY changes
+    ax2 = ax1.twinx()
+    ax2.plot(quarters, yoy_changes, color='red', marker='o', label='YOY Change (%)')
+    ax2.set_ylabel('YOY Change (%)', fontsize=12)
+    ax2.axhline(0, color='gray', linestyle='--', linewidth=0.8)  # Add a horizontal line at 0%
+
+    # Add legends for both axes
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper right')
+
     plt.tight_layout()
-    plt.savefig(f"{symbol}_quarterly_revenue.png")  # Save the plot before displaying
-    plt.show()  # Display the plot
+    plt.savefig(f"{symbol}_quarterly_revenue_yoy.png")  # Save the plot before displaying
+    plt.show()
+
+# Combined function to fetch data and plot
 def get_quarterly_revenue_and_plot(symbol):
     try:
-        quarters, revenues = get_quarterly_revenue(symbol)
-        plot_revenue(quarters, revenues, symbol)
-        #symbol = symbol.strip()
-        return f"✅ Successfully fetched and plotted quarterly revenue data for {symbol}."
+        quarters, revenues, yoy_changes = get_quarterly_revenue(symbol)
+        plot_revenue(quarters, revenues, yoy_changes, symbol)
+        return f"✅ Successfully fetched and plotted quarterly revenue and YOY data for {symbol}."
     except Exception as e:
-        print(f"Error:{symbol}")
         return f"❌ Error: {str(e)}"
+
+# Example usage
 '''
 if __name__ == "__main__":
     company_symbol = input("Enter the company symbol (e.g., AAPL for Apple): ").strip()
-    try:
-        #get_quarterly_revenue(company_symbol)
-        quarters, revenues = get_quarterly_revenue(company_symbol)
-        plot_revenue(quarters, revenues, company_symbol)
-    except Exception as e:
-        print(f"Error: {e}")
+    print(get_quarterly_revenue_and_plot(company_symbol))
 '''
