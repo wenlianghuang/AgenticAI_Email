@@ -2,12 +2,27 @@ import requests
 import matplotlib.pyplot as plt
 import os
 from dotenv import load_dotenv
-
+import pandas as pd
+import mplfinance as mpf
+from pydantic import BaseModel
 load_dotenv()
 
 # Alpha Vantage API Key
 API_KEY = os.getenv('Alpha_Vantage')
-
+class StockReport(BaseModel):
+    recipient: str
+    subject: str
+    body: str
+def get_financial_tool(symbol:str,choice: int)->str:
+    """
+    Get financial data and plot based on user choice.
+    """
+    if choice == "1":
+        return get_quarterly_revenue_and_plot(symbol)
+    elif choice == "2":
+        return get_daily_data_and_plot_candle_chart(symbol)
+    else:
+        return "❌ Invalid choice. Please enter 1 or 2."
 # Function to fetch quarterly revenue data
 def get_quarterly_revenue(symbol):
     url = f'https://www.alphavantage.co/query'
@@ -84,9 +99,71 @@ def get_quarterly_revenue_and_plot(symbol):
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# Example usage
+# Function to fetch daily stock data
+def get_daily_stock_data(symbol):
+    url = f'https://www.alphavantage.co/query'
+    params = {
+        'function': 'TIME_SERIES_DAILY',
+        'symbol': symbol,
+        'apikey': API_KEY,
+        'outputsize': 'compact'  # Fetch last 100 days of data
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    if 'Time Series (Daily)' not in data:
+        raise ValueError("Unable to fetch data. Check the symbol or API key.")
+    
+    daily_data = data['Time Series (Daily)']
+    df = pd.DataFrame.from_dict(daily_data, orient='index', dtype=float)
+    df.index = pd.to_datetime(df.index)  # Convert index to datetime
+    df.columns = ['open', 'high', 'low', 'close', 'volume']
+    df = df.sort_index()  # Sort by date in ascending order
+    return df
+
+# Function to plot candle chart
+def plot_candle_chart(df, symbol):
+    mpf.plot(
+        df,
+        type='candle',
+        style='yahoo',
+        title=f'{symbol} Daily Candle Chart',
+        ylabel='Price (USD)',
+        volume=True,
+        savefig=f"{symbol}_candle_chart.png"  # Save the chart as an image
+    )
+
+    # Display the chart on the screen
+    mpf.plot(
+        df,
+        type='candle',
+        style='yahoo',
+        title=f'{symbol} Daily Candle Chart',
+        ylabel='Price (USD)',
+        volume=True
+    )
+
+# Combined function to fetch and plot candle chart
+def get_daily_data_and_plot_candle_chart(symbol):
+    try:
+        df = get_daily_stock_data(symbol)
+        plot_candle_chart(df, symbol)
+        return f"✅ Successfully fetched and plotted daily candle chart for {symbol}."
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
 '''
+# Main interactive console
 if __name__ == "__main__":
     company_symbol = input("Enter the company symbol (e.g., AAPL for Apple): ").strip()
-    print(get_quarterly_revenue_and_plot(company_symbol))
+    print("Choose an option:")
+    print("1. Quarterly Revenue and YOY Comparison")
+    print("2. Daily Candle Chart")
+    choice = input("Enter your choice (1 or 2): ").strip()
+
+    if choice == "1":
+        print(get_quarterly_revenue_and_plot(company_symbol))
+    elif choice == "2":
+        print(get_daily_data_and_plot_candle_chart(company_symbol))
+    else:
+        print("❌ Invalid choice. Please enter 1 or 2.")
 '''

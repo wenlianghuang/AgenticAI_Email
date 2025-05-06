@@ -51,5 +51,6 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
         - 結果先是從股票和財報下手
 
 - 0505
-    - 
+    - 在**workflow.add_conditional_edges**跟**workflow.set_entry_point**兩者並不衝突,set_entry_point是在工作流程開始的點是agent,而add_conditional_edges則是留到tool_call時會要結束?還是繼續往回agent重新再做一次
+    - 目前我在財報這個部分做一個簡單的Agentic AI,但我只是問公司的狀況,他只能給了最後4個季報和YOY的結果,要再思考還能做些甚麼其他的部分
 
