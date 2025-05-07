@@ -98,8 +98,38 @@ stock_report_tool = Tool(
     func=get_financial_tool,
     description="Fetches and plots the quarterly revenue data for a given stock symbol."
 )
-tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool,stock_report_tool]
+def simple_chatbot_response(user_input: str) -> str:
+    '''
+    prompt = (
+        f"You are a helpful chatbot. Answer the user's question concisely and informatively."
+        f"User: {user_input}\n"
+        f"Chatbot:"
+    )
+    return llm._call(prompt).strip()
+    '''
+    prompt = (
+        f"You are a helpful chatbot. Answer the user's question concisely and informatively. "
+        f"Provide your response step by step if necessary.\n\n"
+        f"User: {user_input}\n"
+        f"Chatbot:"
+    )
+    response = []
 
+    # 使用 streamer 逐步生成回應
+    def capture_output(subword):
+        response.append(subword)
+        print(subword, end="", flush=True)  # 即時輸出每個生成的部分
+        return False  # 繼續生成
+
+    llm.pipeline.generate(prompt, streamer=capture_output)
+    return "".join(response).strip()
+chatbot_tool = Tool(
+    name="Chatbot",
+    func=lambda question: simple_chatbot_response(question),
+    description="Answers general questions or engages in casual conversation."
+)
+tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool,stock_report_tool,chatbot_tool]
+#tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool,stock_report_tool]
 # Define agent input/output schema
 class AgentState(TypedDict):
     messages: Annotated[List, add_messages]
@@ -110,6 +140,8 @@ def call_agent(data: AgentState):
     prompt = (
         "You are an AI assistant with reasoning capabilities. "
         "When the user asks for an action, respond with the exact tool name to execute the action. "
+        #"If the user is asking a general question or engaging in casual conversation, respond with 'Chatbot'. "
+        #"If the user is asking a general question or engaging in casual conversation, respond appropriately. "
         "Do not provide explanations or step-by-step reasoning.\n\n"
         "Available tools:\n"
         + "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
@@ -122,6 +154,9 @@ def call_agent(data: AgentState):
     # Match the response to a tool
     for tool in tools:
         if tool.name.lower() in response.lower():
+            #if tool.name == "Chatbot":
+            #    # 問答模式
+            #    tool_result = tool.func(last_message)
             if tool.name == "Search Wikipedia":
                 # Prompt the user for a topic to search
                 print("🤖 Please provide a topic to search on Wikipedia.")
@@ -161,9 +196,16 @@ def call_agent(data: AgentState):
                 #tool_result = tool.func(symbol)    
             else:
                 tool_result = tool.func("")
+            #else:
+            #    print("Run normal QA")
+            #    tool_result = tool.func(last_message)
+            
             #print(f"Tool result: {tool_result}")
             # Add a marker to indicate the tool has been executed
             return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]")]} # 多給一個標記，讓後面不會重複執行
+        else:
+            chatbot_response = simple_chatbot_response(last_message)
+            return {"messages": data["messages"] + [SystemMessage(content=chatbot_response),SystemMessage(content="[FINISH RESPONSE]")]} # 多給一個標記，讓後面不會重複執行
 
     return {"messages": data["messages"] + [SystemMessage(content="No matching tool found, try to find a more deep tool.")]} # 這是在沒有找到對應的tool,才會繼續往"call_tools_with_feedback"走
     #return {"messages": data["messages"] + [SystemMessage(content="[NO_TOOL_MATCHED]")]} # 這是在沒有找到對應的tool,才會繼續往"call_tools_with_feedback"走
@@ -173,7 +215,7 @@ def similar(a, b):
 
 def call_tools_with_feedback(data: AgentState):
     # Check if the tool has already been executed
-    if any("[TOOL_EXECUTED]" in msg.content for msg in data["messages"]):
+    if any("[TOOL_EXECUTED]" in msg.content for msg in data["messages"]) or any("[FINISH RESPONSE]" in msg.content for msg in data["messages"]):
         return data  # Return the data as-is without executing any tool
     print("run in call_tools_with_feedback")
     last_message = data["messages"][-1].content.lower()
@@ -222,7 +264,7 @@ def call_tools_with_feedback(data: AgentState):
         else:
             return {"messages": data["messages"] + [SystemMessage(content=f"Tool failed: {tool_result}. Trying alternatives...")]}
     
-    return {"messages": data["messages"] + [SystemMessage(content="No tool matched.")]}
+    return {"messages": data["messages"] + [SystemMessage(content="No tool matched in call_tools_with_feedback.")]}
 
 def should_end(data: AgentState) -> bool:
     last_msg = data["messages"][-1].content
