@@ -58,4 +58,11 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
         - 結果今天還未成功
     - 但我把agent tool跟人機問答分離出來,如果有問到某些tool的問題範圍之內,他就會執行此tool並執行,不然就利用我們的function ```simple_chatbot_response``` step by step response.
         - 想辦法回應後就不要再進入```call_tools_with_feedback``` => 在message最後面多加個SystemMessage(context=[FINISH RESPONSE])
-
+- 0508
+    - 要加入上下文歷史紀錄
+    - 給一個另一個功能: 進入會議模式 1.電腦亮度變暗 2.檢測網路狀況 3.
+- 0509
+    - 之前的code```workflow_multi_history```他的定義太嚴苛了,我改用```workflow_multi_fuzzy_tool.py```讓問題可以比較有空間,能幫你做tool,也可以幫你處理一般問答
+    - 先做一個檢測網路狀況的tool,叫做**Checking_Internet.exe** => 但是把它compile成.exe卻一直失敗
+    - 現在來玩另一個,就是錄音錄影的功能,先進行按"q"就會結束並儲存的錄音錄影tool ```Open_Camera_Microphone.exe```
+    - 可以考慮用另一個tool來關閉```Open_Camera_Microphone.exe```,Github Copilot給的是用文字出現就跳出.exe,但我還要想一想

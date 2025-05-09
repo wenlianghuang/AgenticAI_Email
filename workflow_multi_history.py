@@ -141,7 +141,7 @@ def call_agent(data: AgentState):
         "You are an AI assistant with reasoning capabilities. "
         "When the user asks for an action, respond with the exact tool name to execute the action. "
         #"If the user is asking a general question or engaging in casual conversation, respond with 'Chatbot'. "
-        #"If the user is asking a general question or engaging in casual conversation, respond appropriately. "
+        "If the user is asking a general question or engaging in casual conversation, respond appropriately. "
         "Do not provide explanations or step-by-step reasoning.\n\n"
         "Available tools:\n"
         + "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
