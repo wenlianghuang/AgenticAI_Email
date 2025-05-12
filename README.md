@@ -66,3 +66,8 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - 先做一個檢測網路狀況的tool,叫做**Checking_Internet.exe** => 但是把它compile成.exe卻一直失敗
     - 現在來玩另一個,就是錄音錄影的功能,先進行按"q"就會結束並儲存的錄音錄影tool ```Open_Camera_Microphone.exe```
     - 可以考慮用另一個tool來關閉```Open_Camera_Microphone.exe```,Github Copilot給的是用文字出現就跳出.exe,但我還要想一想
+- 0512
+    - 希望利用```Close_Camera_Microphone.exe```來關閉之前的```Open_Camera_Microphone.exe```
+    - 先在```Open_Camera_Microphone.exe```裡面產生一個filename時也利用Agentic AI來處理成一個更完整的.mp4 filename => 成功!!
+    - 我回去思考,在input的時候我是給了prompt然後LLM進行Agentic AI並給然後再observation,thought,reasoning, react...,但是在回應我都給一個制式的回應,如果成功救回應:xxxxx,如果失敗就回應:ooooo,必須重新思考,在回應的部分也可以使用Agentic AI?
+        - 就是在結束後要response時給了response_prompt....然後```tool_result = llm._call(response_prompt).strip()```,他就是回應Agentic AI的自動產生的

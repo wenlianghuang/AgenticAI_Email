@@ -222,6 +222,18 @@ def execute_tool(tool, last_message,data):
         )
         filename = llm._call(prompt).strip().replace(" ", "_")
         tool_result = tool.func(filename)
+        # 使用語言模型生成回應
+        if "✅" in tool_result:  # 成功的情況
+            response_prompt = (
+                f"You are an AI assistant. The user has successfully started a video recording with the filename '{filename}'. "
+                f"Generate a friendly and professional response to confirm this action."
+            )
+        else:
+            response_prompt = (
+                f"You are an AI assistant. The user attempted to start a video recording with the filename '{filename}', but it failed. "
+                f"Generate a polite and helpful response explaining the failure and suggesting possible solutions."
+            )
+        tool_result = llm._call(response_prompt).strip()
     elif tool.name == "Meeting Mode":
         tool_result = tool.func("")
     else:
