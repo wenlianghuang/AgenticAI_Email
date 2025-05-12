@@ -10,9 +10,8 @@ load_dotenv()
 # Alpha Vantage API Key
 API_KEY = os.getenv('Alpha_Vantage')
 class StockReport(BaseModel):
-    recipient: str
-    subject: str
-    body: str
+    symbol: str
+    choice: int
 def get_financial_tool(symbol:str,choice: int)->str:
     """
     Get financial data and plot based on user choice.
