@@ -227,13 +227,23 @@ def execute_tool(tool, last_message,data):
             response_prompt = (
                 f"You are an AI assistant. The user has successfully started a video recording with the filename '{filename}'. "
                 f"Generate a friendly and professional response to confirm this action."
+                f"Only provide the response without any additional text."
             )
         else:
             response_prompt = (
                 f"You are an AI assistant. The user attempted to start a video recording with the filename '{filename}', but it failed. "
                 f"Generate a polite and helpful response explaining the failure and suggesting possible solutions."
+                f"Only provide the reponse without any additional text."
             )
-        tool_result = llm._call(response_prompt).strip()
+        # stream generation response 
+        response = []
+        def capture_output(subword):
+            response.append(subword)
+            print(subword, end="", flush=True)  # 即時輸出
+            return False
+        llm.pipeline.generate(response_prompt, streamer=capture_output)
+        #tool_result = llm._call(response_prompt).strip()
+        tool_result = "".join(response).strip()
     elif tool.name == "Meeting Mode":
         tool_result = tool.func("")
     else:

@@ -71,3 +71,5 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - 先在```Open_Camera_Microphone.exe```裡面產生一個filename時也利用Agentic AI來處理成一個更完整的.mp4 filename => 成功!!
     - 我回去思考,在input的時候我是給了prompt然後LLM進行Agentic AI並給然後再observation,thought,reasoning, react...,但是在回應我都給一個制式的回應,如果成功救回應:xxxxx,如果失敗就回應:ooooo,必須重新思考,在回應的部分也可以使用Agentic AI?
         - 就是在結束後要response時給了response_prompt....然後```tool_result = llm._call(response_prompt).strip()```,他就是回應Agentic AI的自動產生的
+        - 注意在response_prompt的部分回應主軸就好,無須多寫其他的(without any additional text.")
+    - 
