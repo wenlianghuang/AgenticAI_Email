@@ -68,8 +68,10 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - 可以考慮用另一個tool來關閉```Open_Camera_Microphone.exe```,Github Copilot給的是用文字出現就跳出.exe,但我還要想一想
 - 0512
     - 希望利用```Close_Camera_Microphone.exe```來關閉之前的```Open_Camera_Microphone.exe```
+        - 暫時不考慮 ```Close_Camera_Microphone.exe```來關閉,用手動關閉吧
     - 先在```Open_Camera_Microphone.exe```裡面產生一個filename時也利用Agentic AI來處理成一個更完整的.mp4 filename => 成功!!
     - 我回去思考,在input的時候我是給了prompt然後LLM進行Agentic AI並給然後再observation,thought,reasoning, react...,但是在回應我都給一個制式的回應,如果成功救回應:xxxxx,如果失敗就回應:ooooo,必須重新思考,在回應的部分也可以使用Agentic AI?
         - 就是在結束後要response時給了response_prompt....然後```tool_result = llm._call(response_prompt).strip()```,他就是回應Agentic AI的自動產生的
         - 注意在response_prompt的部分回應主軸就好,無須多寫其他的(without any additional text.")
-    - 
+        - 基本上我就是讓agentic ai依照observation,reasoning step, action一直找到他覺得OK以後把最後一個部分(brightness,master-volume,app-volume)的int value回傳給.exe 去執行,並回應給user,當然時間就比較久
+    - 明天還是盡力用history來去找之前的問答然後重新修改不管是brightness還是audio volume的大小

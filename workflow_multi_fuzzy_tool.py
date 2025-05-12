@@ -15,7 +15,7 @@ from agent_tool.sendEmail import send_email, SendEmailInput
 from agent_tool.searchWikipedia import search_wikipedia
 from agent_tool.stockReport import get_financial_tool, StockReport
 from agent_tool.meeting_mode import meeting_mode
-from agent_tool.recording_vedio import recording_video
+from agent_tool.recording_video import recording_video
 load_dotenv()
 
 model_path = 'Phi-35_mini_instruct_refined'

@@ -16,34 +16,36 @@ from agent_tool.searchWikipedia import search_wikipedia
 from agent_tool.stockReport import get_financial_tool, StockReport
 from agent_tool.meeting_mode import meeting_mode,MeetingModeType
 from agent_tool.recording_video import recording_video
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 load_dotenv()
 
-model_path = 'Phi-35_mini_instruct_refined'
-pipe = ov_genai.LLMPipeline(model_path, device='NPU')
+model_name = "microsoft/Phi-4"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name).to(device="cuda:0", torch_dtype=torch.float16, low_cpu_mem_usage=True)
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-class OpenVINO_LLM(LLM):
-    def __init__(self, pipeline: ov_genai.LLMPipeline, **kwargs):
+class TransformersLLM(LLM):
+    def __init__(self, model, tokenizer, **kwargs):
         super().__init__(**kwargs)
-        self._pipeline = pipeline
-
-    @property
-    def pipeline(self) -> ov_genai.LLMPipeline:
-        return self._pipeline
+        self.model = model
+        self.tokenizer = tokenizer
 
     @property
     def _llm_type(self) -> str:
-        return "openvino_genai"
+        return "transformers"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        response = []
-        def capture_output(subword):
-            response.append(subword)
-            return False
-        self.pipeline.generate(prompt, streamer=capture_output)
-        return "".join(response)
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        outputs = self.model.generate(
+            inputs["input_ids"],
+            max_length=512,
+            num_return_sequences=1,
+            eos_token_id=self.tokenizer.eos_token_id,
+        )
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-llm = OpenVINO_LLM(pipeline=pipe)
+llm = TransformersLLM(model=model, tokenizer=tokenizer)
 
 # Define tools
 def open_calculator() -> str:
