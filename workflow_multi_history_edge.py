@@ -102,7 +102,7 @@ meeting_mode_tool = Tool(
     name="Activate Meeting Mode", # 強化工具名稱的唯一性
     #func=lambda _: meeting_mode(),
     func=meeting_mode,
-    description="Activates meeting mode and checks the brightness and volume settings.",
+    description="The meeting is ready to start, activates meeting mode and checks the brightness and volume settings.",
     args_schema=MeetingModeType
 )
 
@@ -113,21 +113,38 @@ recording_vedio_tool = Tool(
     description="Starts to record video and save it in the local disk."
 )
 def simple_chatbot_response(user_input: str) -> str:
+    '''
     prompt = (
-        f"You are a helpful chatbot. Answer the user's question concisely and informatively. "
-        f"Provide your response step by step if necessary.\n\n"
+        f"You are a helpful chatbot. Answer the user's question concisely and directly. "
+        f"Provide only the necessary information in one or two sentences. "
+        f"Do not include any additional explanations, commentary, self-reflection, or repeated statements. "
+        f"Do not generate hypothetical scenarios or additional questions.\n\n"
         f"User: {user_input}\n"
         f"Chatbot:"
     )
+    '''
     response = []
 
     def capture_output(subword):
         response.append(subword)
         print(subword, end="", flush=True)
         return False
+    llm.pipeline.generate(user_input, streamer=capture_output)
+    full_response = "".join(response).strip()
 
-    llm.pipeline.generate(prompt, streamer=capture_output)
+    # Save the user input and AI response to memory
+    memory.chat_memory.add_user_message(user_input)
+    memory.chat_memory.add_ai_message(full_response)
+    
+    #llm.pipeline.generate(prompt, streamer=capture_output)
+    #full_response = "".join(response).strip()
+    # Post-process to remove any repeated "Chatbot:" or unnecessary content
+    #if "Chatbot:" in "".join(response):
+    #    full_response = full_response.split("Chatbot:")[0].strip()
+
     return "".join(response).strip()
+    
+    #return full_response
 
 chatbot_tool = Tool(
     name="Chatbot",
@@ -135,58 +152,111 @@ chatbot_tool = Tool(
     description="Answers general questions or engages in casual conversation."
 )
 
-tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool, stock_report_tool, meeting_mode_tool,recording_vedio_tool ,chatbot_tool]
-
+#tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool, stock_report_tool, meeting_mode_tool,recording_vedio_tool ,chatbot_tool]
+#tools = [calculator_tool, paint_tool, weather_tool, send_email_tool, wikipedia_tool, stock_report_tool, meeting_mode_tool,recording_vedio_tool]
+tools = [weather_tool, send_email_tool, wikipedia_tool, stock_report_tool, meeting_mode_tool,recording_vedio_tool]
 class AgentState(TypedDict):
-    messages: Annotated[List, add_messages]
+    #messages: Annotated[List, add_messages]
+    messages: Optional[Annotated[List, add_messages]]  # 用于存储消息列表
+    selected_tool: Optional[str]  # 用于存储选择的工具名称
+    user_input: Optional[str]     # 用于存储用户的最后输入
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 def call_agent(data: AgentState):
+    # Combine chat history into the prompt
+    chat_history = "\n".join(
+        [f"User: {msg.content}" if i % 2 == 0 else f"Assistant: {msg.content}" 
+         for i, msg in enumerate(memory.chat_memory.messages)]
+    )
+    #if len(chat_history) >= 1024:
+    #    chat_history = chat_history[1024:] 
+    
+    # 20250515 Ensure chat history does not exceed the length limit
+    max_length = 1024  # Define a configurable length limit
+    if len(chat_history) > max_length:
+        # Split messages and truncate from the start while preserving message boundaries
+        messages = chat_history.split("\n")
+        truncated_history = []
+        current_length = 0
+        
+        # Add messages from the end until the limit is reached
+        for msg in reversed(messages):
+            if current_length + len(msg) + 1 > max_length:  # +1 for the newline character
+                break
+            truncated_history.insert(0, msg)
+            current_length += len(msg) + 1
+        
+        chat_history = "\n".join(truncated_history)
+    
     prompt = (
         "You are an AI assistant with reasoning capabilities. "
         "When the user asks for an action, respond with the exact tool name to execute the action. "
-        "If the user is asking a general question or engaging in casual conversation, respond with 'Chatbot'. "
+        #"If the user is asking a general question or engaging in casual conversation, respond with 'Chatbot'. "
         "Do not provide explanations or step-by-step reasoning.\n\n"
         "Available tools:\n"
         + "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
+        + "\n\n"
+        + "Chat History:\n"
+        + chat_history
         + "\n\n"
         + "User input:\n"
         + "".join([m.content for m in data["messages"] if hasattr(m, 'content')])
     )
     response = llm._call(prompt).strip()
+    print("response:", response)
     last_message = data["messages"][-1].content.lower()
+    #print("last_message:", last_message)
+    # Save the user input and assistant response to memory
+    memory.chat_memory.add_user_message(last_message)
+    memory.chat_memory.add_ai_message(response)
 
     # Exact match for tool names
     for tool in tools:
         if tool.name.lower() in response.lower():
-            return execute_tool(tool, last_message,data)
+            print(f"Exact match found: {tool.name}")
+            return {"messages": [SystemMessage(content="")],"selected_tool": tool, "user_input": last_message}
+            #return execute_tool(tool, last_message,data)
 
     # Fuzzy matching for tool names or descriptions
     best_match = None
     best_score = 0.0
+
+    combined_input = chat_history +"\n" + last_message
     for tool in tools:
         for keyword in [tool.name.lower(), tool.description.lower()]:
             # Give higher weight to tool names
             name_score = similar(last_message, tool.name.lower()) * 1.5 # Higher weight for name
+            #name_score = similar(combined_input, tool.name.lower()) * 1.5 # Higher weight for name
             # Give lower weight to tool descriptions
             desc_score = similar(last_message, tool.description.lower())
+            #desc_score = similar(combined_input, tool.description.lower())
             # Combine scores
             score = max(name_score, desc_score)
+            print(f"Keyword: {keyword}, Score: {score}")
             #score = similar(last_message, keyword)
             if score > best_score:
                 best_score = score
                 best_match = tool
+                
 
-    if best_match and best_score > 0.7:
-        return execute_tool(best_match, last_message,data)
-
-    # Default to chatbot response
-    chatbot_response = simple_chatbot_response(last_message)
-    return {"messages": data["messages"] + [SystemMessage(content=chatbot_response), SystemMessage(content="[FINISH RESPONSE]")]}
-
-def execute_tool(tool, last_message,data):
+    if best_match and best_score > 0.3:
+        return {"messages": [SystemMessage(content="")],"selected_tool": best_match, "user_input": last_message}
+    else:
+        # Default to chatbot response
+        chatbot_response = simple_chatbot_response(last_message)
+        memory.chat_memory.add_ai_message(chatbot_response)  # Save chatbot response to memory
+    #return {"messages": data["messages"] + [SystemMessage(content=chatbot_response), SystemMessage(content="[FINISH RESPONSE]")]}
+    return {"messages": [SystemMessage(content="[FINISH RESPONSE]")],"selected_tool": None, "user_input": None}
+# 保存上下文資訊的全域變數
+meeting_mode_context = {"brightness": None, "master_volume": None, "app_volume": None}
+def execute_tool(data: AgentState):
+    tool = data["selected_tool"]
+    last_message = data["user_input"]
+    global meeting_mode_context  # 使用全域變數保存上下文資訊
+    if tool is None:
+        return {"messages": data["messages"] + [SystemMessage(content="No tool matched in execute_tool.")], "selected_tool": None, "user_input": None}
     if tool.name == "Search Wikipedia":
         print("🤖 Please provide a topic to search on Wikipedia.")
         topic = input("Topic: ")
@@ -210,6 +280,9 @@ def execute_tool(tool, last_message,data):
             f"You are an AI assistant. The user wants to set the meeting mode. "
             f"The parameters 'brightness', 'master_volume', and 'app_volume' must be within the range of 0 to 100. "
             f"The user has provided the following preferences: {last_message}. "
+            f"Use the following context for missing parameters: {meeting_mode_context}. "
+            f"Here is the chat history for reference: {memory.chat_memory.messages}. "  # 包含 chat_history
+            f"Do not change the value of parameters explicitly mentioned to be kept unchanged by the user. "
             f"Generate appropriate values for the missing parameters based on the user's intent. "
             f"But the missing parameters must not over 50. "
             f"Only provide the values in the format: brightness=<value>, master_volume=<value>, app_volume=<value>."
@@ -230,6 +303,10 @@ def execute_tool(tool, last_message,data):
                 int(value.split('=')[1]) for value in response_lines if '=' in value
             ]
             print(f"brightness: {brightness}, master_volume: {master_volume}, app_volume: {app_volume}")
+            # 更新全局上下文
+            meeting_mode_context["brightness"] = brightness
+            meeting_mode_context["master_volume"] = master_volume
+            meeting_mode_context["app_volume"] = app_volume
             tool_result = tool.func(brightness=brightness, master_volume=master_volume, app_volume=app_volume)
         except (ValueError, IndexError) as e:
             # 捕捉錯誤並提供回饋
@@ -255,6 +332,7 @@ def execute_tool(tool, last_message,data):
             response.append(subword)
             print(subword, end="", flush=True)  # 即時輸出
             return False
+        print("🤖 ")
         llm.pipeline.generate(response_prompt, streamer=capture_output)
         #tool_result = llm._call(response_prompt).strip()
         tool_result = "".join(response).strip()
@@ -299,9 +377,13 @@ def execute_tool(tool, last_message,data):
         llm.pipeline.generate(response_prompt, streamer=capture_output)
         #tool_result = llm._call(response_prompt).strip()
         tool_result = "".join(response).strip()
-    #else:
-    #    tool_result = tool.func("")
-    return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]")]}
+    #elif tool is None and last_message is None:
+    #    return {"messages": data["messages"] + [SystemMessage(content="No tool matched in execute_tool.")], "selected_tool": None, "user_input": None}
+    #elif tool.name == "Chatbot":
+        # 直接使用工具的 func 方法
+    #    tool_result = tool.func(last_message)
+    #    return {"messages": [SystemMessage(content="[FINISH RESPONSE]")]}
+    return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]")],"selected_tool": None, "user_input": None}
 
 def call_tools_with_feedback(data: AgentState):
     if any("[TOOL_EXECUTED]" in msg.content for msg in data["messages"]) or any("[FINISH RESPONSE]" in msg.content for msg in data["messages"]):
@@ -320,7 +402,7 @@ def call_tools_with_feedback(data: AgentState):
     if best_match and best_score > 0.8:
         return execute_tool(best_match, last_message)
 
-    return {"messages": data["messages"] + [SystemMessage(content="No tool matched in call_tools_with_feedback.")]}
+    return {"messages": data["messages"] + [SystemMessage(content="No tool matched in call_tools_with_feedback.")], "selected_tool": None, "user_input": None}
 
 def should_end(data: AgentState) -> bool:
     last_msg = data["messages"][-1].content
@@ -328,14 +410,31 @@ def should_end(data: AgentState) -> bool:
 
 def build_workflow():
     workflow = StateGraph(AgentState)
+    
+    # 添加 agent 節點
     workflow.add_node("agent", call_agent)
+    
+    # 添加 execute_tool 節點
+    workflow.add_node("execute_tool", execute_tool)
+    
+    # 添加 tool_call 節點
     workflow.add_node("tool_call", call_tools_with_feedback)
+    
+    # 設置入口點
     workflow.set_entry_point("agent")
-    workflow.add_edge("agent", "tool_call")
+    
+    # 添加邊：從 agent 到 execute_tool
+    workflow.add_edge("agent", "execute_tool")
+    
+    # 添加邊：從 execute_tool 到 tool_call
+    workflow.add_edge("execute_tool", "tool_call")
+    
+    # 添加條件邊：從 tool_call 到 end 或 agent
     workflow.add_conditional_edges(
         "tool_call", 
         should_end,
-        "end",
-        "agent",
+        "end",  # 如果應該結束，跳到 end
+        "agent",  # 否則返回 agent
     )
+    
     return workflow.compile()

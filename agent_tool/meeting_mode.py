@@ -34,6 +34,10 @@ def meeting_mode(brightness: int, master_volume: int, app_volume: int) -> str:
             "C:\\Users\\matt\\Desktop\\Agentic_AI_Tool\\dist\\Set_Brightness.exe",
             f"--brightness={brightness}"
         ]
+        command_battery = [
+            "C:\\Users\\matt\\Desktop\\Agentic_AI_Tool\\dist\\Set_Battery.exe",
+            
+        ]
         brightness_exe_path = "C:\\Users\\matt\\Desktop\\Agentic_AI_Tool\\dist\\Set_Brightness.exe"
         brightness_exe_dir = os.path.dirname(brightness_exe_path)
         
@@ -44,7 +48,8 @@ def meeting_mode(brightness: int, master_volume: int, app_volume: int) -> str:
         #subprocess.run([adudio_volume_exe_path,"--master-volume",master_volume,"--app-volume",app_volume], check=True, cwd=adudio_volume_exe_dir)
         subprocess.run(command_brightness, check=True, text=True,capture_output=True)
         subprocess.run(command_audio, check=True, text=True,capture_output=True)
-        return f"✅ Start Meeting Model successfully. the brightness volume is {brightness}, the master volume is {master_volume}, the app volume is {app_volume}."
+        subprocess.run(command_battery, check=True, text=True,capture_output=True)
+        return f"✅ Start Meeting Model successfully. the brightness volume is {brightness}, the master volume is {master_volume}, the app volume is {app_volume}. The battery is in save mode now."
     except subprocess.CalledProcessError as e:
         return f"❌ Failed to start Meeting Model: {str(e)}"
     except Exception as e:

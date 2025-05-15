@@ -75,3 +75,24 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
         - 注意在response_prompt的部分回應主軸就好,無須多寫其他的(without any additional text.")
         - 基本上我就是讓agentic ai依照observation,reasoning step, action一直找到他覺得OK以後把最後一個部分(brightness,master-volume,app-volume)的int value回傳給.exe 去執行,並回應給user,當然時間就比較久
     - 明天還是盡力用history來去找之前的問答然後重新修改不管是brightness還是audio volume的大小
+- 0513
+    - 先處理一般的問答,注意,有時候如果問題是一般的回應,但卻進入action的執行狀況,請用tool.name == "Chatbot"
+    - 在一般的問答(chatbot_tool),我直接把prompt拿掉,讓回答單純很多,不用一直進行自問自答
+    - 在prompt的部分如果利用Agentic AI讓LLM自己邏輯推理,prompt就要多寫一些
+    - Thu.的時要測試"Activate the meeting mode and I want the brightness value is less than 30" => 可以在console_chatbot_langgraph_v4_0513.py下執行
+    - 我在responseb如果是利用agentic ai時,他就不會有"[TOOL_EXECUTED]",而在python <main.py>就會出現"🤖 {msg.content}",要特別注意
+- 0514
+    - "I want to activate the meeting mode and the brightness is less than 30"最新的測試也成功
+    - 發現在第一個問題OK,但接續的問題時會出現 **Failed to parse meeting mode parameters: {str(e)}. Please ensure the input format is correct.** 
+        - 主要問題是因為在meeting_mode_tool裡面她要確認brightness,master_value,app_value如果沒有輸入的話她就會出現error,所以可以在外面先把這三個都定義到global varialbe,這樣就解決問題
+    - 第一個問題讓brightness變小,但第二個問題內容我有說"but keep the value of brightness"但brightness還是變大了,這該怎麼解決?
+        - 在prompt中增加```f"Here is the chat history for reference: {memory.chat_memory.messages}. "```(chat_history)
+        - # 更新全局上下文
+            meeting_mode_context["brightness"] = brightness
+            meeting_mode_context["master_volume"] = master_volume
+            meeting_mode_context["app_volume"] = app_volume
+        - 可以用以下的問答來成功做出我的Demo
+            - Activate the meeting mode and I want the brightness value is less than 30
+            - The master_value is too small, I want the value of it can upgrade but keep the value of brightness the same
+    - 接下來我把meeting mode打掉,取代的是連續做三個tool(brightness,aduio_volume,power server)
+    
