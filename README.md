@@ -111,3 +111,5 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
     - add_conditional_edges我還無法完全了解
     - 為何add_conditional_edges竟然沒有找到兩個中任何一個function?
         - 不知道為何(12:00 p.m.)
+        - 問題應該是出在```console_chatbot_langgraph_v5.py```他的```inputs = {"messages": [HumanMessage(content=user_input)],"selected_tool": None,"user_input": user_input}```之前後面兩個參數好像都沒定義進去,目前測試時把兩者都定義後似乎就可以成功?
+        - 基本上已經成功了,接下來我就該思考如何要在連續stream的互動過程中能一直有相對應的回答 => 這似乎有牽涉到```console_chatbot_langgraph_v5_0515.py```跟他內部的workflow_multi...要怎麼即時互動?
