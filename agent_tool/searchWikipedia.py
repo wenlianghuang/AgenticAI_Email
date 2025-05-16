@@ -15,7 +15,7 @@ def search_wikipedia(query: str) -> str:
         wikipedia.set_lang("en")
         # Search Wikipedia and get the summary of the first result
         summary = wikipedia.summary(query, sentences=3)
-        return f"✅ {summary} STOP"
+        return f"✅ {summary} STOP [NEXT]"
     except wikipedia.exceptions.DisambiguationError as e:
         return f"Your query is ambiguous. Here are some suggestions: {e.options}"
     except wikipedia.exceptions.PageError as e:

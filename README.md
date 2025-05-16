@@ -95,4 +95,19 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
             - Activate the meeting mode and I want the brightness value is less than 30
             - The master_value is too small, I want the value of it can upgrade but keep the value of brightness the same
     - 接下來我把meeting mode打掉,取代的是連續做三個tool(brightness,aduio_volume,power server)
-    
+    - 先用weather and stock_report_tool來舉例,就本上就是把兩個也都放在node,edge,conditional_edges,依序執行
+    - 也請記得,如果你像要做完一件事情就顯示,那可以在裡面就print出來,而不必等到return後在等其他tool完成後在一起release
+    - 問題還是出在這**workflow.add_conditional_edges(
+        "weather_tool",
+        #lambda data: any("[NEXT]" in msg.content for msg in data["messages"]),  # 用戶輸入 "next" 繼續
+        should_end,
+        "stock_report_tool",
+        "end",
+    )**
+    - 不能同時用add_edges和add_conditional_edges同時做一樣的流程,只能擇一,而目前add_edges可以run =>不能這麼說!!!
+    - 發現如果沒有add_edges某個tool,那即使你在問相關的問題時(ex:wikipedia),他還是跑回原來的tool(ex:weather.py)
+- 0516
+    - 目前看來只能先用單純的add_edges後在裡面的function直接print和執行
+    - add_conditional_edges我還無法完全了解
+    - 為何add_conditional_edges竟然沒有找到兩個中任何一個function?
+        - 不知道為何(12:00 p.m.)

@@ -89,7 +89,7 @@ wikipedia_tool = Tool(
     name="Search Wikipedia",
     func=lambda query: search_wikipedia(query),
     description="Returns a Wikipedia summary given a topic.",
-    args_schema=StockReport
+    #args_schema=StockReport
 )
 
 stock_report_tool = Tool(
@@ -234,7 +234,7 @@ def call_agent(data: AgentState):
             #desc_score = similar(combined_input, tool.description.lower())
             # Combine scores
             score = max(name_score, desc_score)
-            #print(f"Keyword: {keyword}, Score: {score}")
+            print(f"Keyword: {keyword}, Score: {score}")
             #score = similar(last_message, keyword)
             if score > best_score:
                 best_score = score
@@ -261,10 +261,14 @@ def execute_tool(data: AgentState):
         print("🤖 Please provide a topic to search on Wikipedia.")
         topic = input("Topic: ")
         tool_result = tool.func(topic)
+        return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]"),SystemMessage(content="[NEXT]")],"selected_tool": None, "user_input": None}
+
     elif tool.name == "Get Weather":
         print("🤖 Please provide the city name for weather information.")
         city = input("City: ")
         tool_result = tool.func(city)
+        print("tool_result:", tool_result)
+        return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]"),SystemMessage(content="[NEXT]")],"selected_tool": None, "user_input": None}
     elif tool.name == "SendEmail":
         print("🤖 Please provide the recipient, subject, and the concept of day.")
         recipient = input("Recipient: ")
@@ -275,6 +279,8 @@ def execute_tool(data: AgentState):
         )
         body = llm._call(prompt).strip()
         tool_result = tool.func(recipient, subject, body)
+        
+
     elif tool.name == "Activate Meeting Mode":
         prompt = (
             f"You are an AI assistant. The user wants to set the meeting mode. "
@@ -383,7 +389,8 @@ def execute_tool(data: AgentState):
         # 直接使用工具的 func 方法
     #    tool_result = tool.func(last_message)
     #    return {"messages": [SystemMessage(content="[FINISH RESPONSE]")]}
-    return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]")],"selected_tool": None, "user_input": None}
+    print("Return messages:", [msg.content for msg in data["messages"]])
+    #return {"messages": data["messages"] + [SystemMessage(content=tool_result), SystemMessage(content="[TOOL_EXECUTED]"),SystemMessage(content="[NEXT]")],"selected_tool": None, "user_input": None}
 
 def call_tools_with_feedback(data: AgentState):
     if any("[TOOL_EXECUTED]" in msg.content for msg in data["messages"]) or any("[FINISH RESPONSE]" in msg.content for msg in data["messages"]):
@@ -403,11 +410,22 @@ def call_tools_with_feedback(data: AgentState):
         return execute_tool(best_match, last_message)
 
     return {"messages": data["messages"] + [SystemMessage(content="No tool matched in call_tools_with_feedback.")], "selected_tool": None, "user_input": None}
-
+'''
 def should_end(data: AgentState) -> bool:
     last_msg = data["messages"][-1].content
-    return any(stop_word in last_msg for stop_word in ["✅", "❌"])
-
+    print(f"Debug: Last message content in should_end: {last_msg}")
+    return any(stop_word in last_msg for stop_word in ["✅", "❌","[NEXT]"])
+    #return any(stop_word in last_msg for stop_word in ["✅", "❌"])
+'''
+def should_end(data: AgentState) -> bool:
+    if not data["messages"]:
+        print("Debug: No messages in data.")
+        return False
+    last_msg = data["messages"][-1].content
+    print(f"Debug: Last message content in should_end: {last_msg}")
+    result = any(stop_word in last_msg for stop_word in ["✅", "❌", "[NEXT]"])
+    print(f"Debug: should_end result: {result}")
+    return result
 def build_workflow():
     workflow = StateGraph(AgentState)
     
@@ -417,24 +435,92 @@ def build_workflow():
     # 添加 execute_tool 節點
     workflow.add_node("execute_tool", execute_tool)
     
-    # 添加 tool_call 節點
-    workflow.add_node("tool_call", call_tools_with_feedback)
+    # 添加 weather_tool 節點
+    workflow.add_node("weather_tool", lambda data: execute_tool({**data, "selected_tool": weather_tool}))
     
+    # 添加 stock_report_tool 節點
+    #workflow.add_node("stock_report_tool", lambda data: execute_tool({**data, "selected_tool": stock_report_tool}))
+    workflow.add_node("wikipedia_tool", lambda data: execute_tool({**data, "selected_tool": wikipedia_tool}))
+    # 添加 end 節點
+    #workflow.add_node("end_for", lambda data: {"messages": data["messages"] + [SystemMessage(content="Workflow ended.")], "selected_tool": None, "user_input": None})
+    def start_for(data):
+        # 打印一些資訊
+        print("Workflow has reached the start.")
+        print("Final messages:", [msg.content for msg in data["messages"]])
+        return {
+            "messages": data["messages"] + [SystemMessage(content="Workflow start.")],
+            "selected_tool": None,
+            "user_input": None
+        }
+    workflow.add_node("start_for", start_for)
+    def end_for(data):
+        # 打印一些資訊
+        print("Workflow has reached the end.")
+        print("Final messages:", [msg.content for msg in data["messages"]])
+        return {
+            "messages": data["messages"] + [SystemMessage(content="Workflow ended.")],
+            "selected_tool": None,
+            "user_input": None
+        }
+    workflow.add_node("end_for", end_for)
+    def test_for(data):
+        # 打印一些資訊
+        print("Workflow has reached the test.")
+        print("Final messages:", [msg.content for msg in data["messages"]])
+        return {
+            "messages": data["messages"] + [SystemMessage(content="Workflow test.")],
+            "selected_tool": None,
+            "user_input": None
+        }
+    workflow.add_node("test_for", test_for)
     # 設置入口點
     workflow.set_entry_point("agent")
     
-    # 添加邊：從 agent 到 execute_tool
-    workflow.add_edge("agent", "execute_tool")
-    
-    # 添加邊：從 execute_tool 到 tool_call
-    workflow.add_edge("execute_tool", "tool_call")
-    
-    # 添加條件邊：從 tool_call 到 end 或 agent
+    # 添加邊：從 agent 到 weather_tool
+    #workflow.add_edge("agent", "weather_tool")
+    workflow.add_edge("agent", "start_for")
+    # 添加邊：從 weather_tool 到 stock_report_tool
+    #workflow.add_edge("weather_tool", "stock_report_tool")
+    #workflow.add_edge("weather_tool", "wikipedia_tool")
+    # 添加條件邊：從 weather_tool 到 stock_report_tool 或 end
     workflow.add_conditional_edges(
-        "tool_call", 
-        should_end,
+        "start_for",
+        #lambda data: any("[NEXT]" in msg.content for msg in data["messages"]),  # 用戶輸入 "next" 繼續
+        lambda data: should_end(data),  # 用戶輸入 "next" 繼續
+        #lambda data: print(f"Debug: should_end result: {should_end(data)}") or should_end(data),
+        #should_end,
+        #"wikipedia_tool",  # 如果應該結束，跳到 end
+        #"test_for",  # 如果應該結束，跳到 end
+        #"end_for",
+        {
+            True: "test_for",   # 如果 decision 為 True，跳轉到 B
+            False: "end_for"   # 如果 decision 為 False，跳轉到 C
+        }
+    )
+    '''
+    workflow.add_conditional_edges(
+        "weather_tool",
+        #lambda data: any("[NEXT]" in msg.content for msg in data["messages"]),  # 用戶輸入 "next" 繼續
+        lambda data: should_end(data),  # 用戶輸入 "next" 繼續
+        #lambda data: print(f"Debug: should_end result: {should_end(data)}") or should_end(data),
+        #should_end,
+        #"wikipedia_tool",  # 如果應該結束，跳到 end
+        "test_for",  # 如果應該結束，跳到 end
+        "end_for",
+    )
+    '''
+    
+    '''
+    # 添加條件邊：從 stock_report_tool 到 end 或 agent
+    workflow.add_conditional_edges(
+        #"stock_report_tool", 
+        "wikipedia_tool",
+        #"weather_tool",
+        lambda data: should_end(data),
+        #lambda data: any("[NEXT]" in msg.content for msg in data["messages"]),  # 用戶輸入 "next" 繼續
         "end",  # 如果應該結束，跳到 end
         "agent",  # 否則返回 agent
     )
+    '''
     
     return workflow.compile()
