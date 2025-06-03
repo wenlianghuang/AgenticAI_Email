@@ -113,3 +113,10 @@ Check '*roi_begin <= *max_dim' failed at src\inference\src\dev\make_tensor.cpp:3
         - 不知道為何(12:00 p.m.)
         - 問題應該是出在```console_chatbot_langgraph_v5.py```他的```inputs = {"messages": [HumanMessage(content=user_input)],"selected_tool": None,"user_input": user_input}```之前後面兩個參數好像都沒定義進去,目前測試時把兩者都定義後似乎就可以成功?
         - 基本上已經成功了,接下來我就該思考如何要在連續stream的互動過程中能一直有相對應的回答 => 這似乎有牽涉到```console_chatbot_langgraph_v5_0515.py```跟他內部的workflow_multi...要怎麼即時互動?
+- 0520
+    - 我希望可以以串流的方式來進行,以```set_brightness```和```set_volume```為例子,先做完brightness後直接做volume,中間會有說明,但沒必要暫停讓使用者重新問答
+- 0522
+    - 
+    - demo ```console_chartbot_langgraph_v7_0521.py```
+        - 先問**Please lower the screen brightness and increase the audio volume for me. Decide the appropriate values automatically.**
+        - 再問**Brightness seems too low, keep speaker volume and increase brightness value**
